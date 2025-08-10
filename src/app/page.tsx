@@ -10,6 +10,7 @@ import EducationSection from '@/components/EducationSection';
 import ProjectsSection from '@/components/ProjectsSection';
 import ContactSection from '@/components/ContactSection';
 import CommentsSection from '@/components/CommentsSection';
+import FirebaseStatusNotice from '@/components/FirebaseStatusNotice';
 
 export default function Home() {
   const { currentUser } = useAuth();
@@ -17,6 +18,7 @@ export default function Home() {
   return (
     <div className="bg-black text-white min-h-screen">
       <Navigation />
+      <FirebaseStatusNotice />
       
       <motion.main
         initial={{ opacity: 0 }}
