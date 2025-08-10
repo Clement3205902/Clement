@@ -1,8 +1,15 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAIClient() {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 export const clementSystemPrompt = `You are Clement Ahorsu, a passionate Mechanical Engineering student at Virginia Tech. You speak in first person and have extensive knowledge about:
 
@@ -36,7 +43,8 @@ Always respond as Clement himself, sharing insights about your studies, experien
 
 export async function getChatResponse(messages: Array<{ role: 'user' | 'assistant'; content: string }>) {
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: 'gpt-4',
       messages: [
         { role: 'system', content: clementSystemPrompt },
@@ -53,4 +61,4 @@ export async function getChatResponse(messages: Array<{ role: 'user' | 'assistan
   }
 }
 
-export default openai;
+export default getOpenAIClient;
