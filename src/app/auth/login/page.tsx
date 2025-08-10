@@ -1,23 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, LogIn, Loader } from 'lucide-react';
+import { Mail, Lock, LogIn, Loader, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import AuthDebugInfo from '@/components/AuthDebugInfo';
+import TestAuthButton from '@/components/TestAuthButton';
+import { getFirebaseAuthSafe } from '@/lib/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [authAvailable, setAuthAvailable] = useState(true);
   
   const { login, loginWithGoogle } = useAuth();
   const router = useRouter();
 
+  useEffect(() => {
+    const auth = getFirebaseAuthSafe();
+    setAuthAvailable(!!auth);
+    
+    if (!auth) {
+      setError('Authentication service is currently unavailable. Please check the configuration or try again later.');
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!authAvailable) {
+      setError('Authentication service is currently unavailable. Please try again later.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
 
@@ -25,12 +44,34 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/');
     } catch (error: any) {
-      setError('Failed to sign in. Please check your credentials.');
+      console.error('Login error details:', error);
+      let errorMessage = 'Failed to sign in. ';
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      } else if (error.message && error.message.includes('configuration')) {
+        errorMessage = 'Authentication service is currently unavailable. Please try again later.';
+      } else {
+        errorMessage = `Failed to sign in: ${error.message || 'Unknown error'}`;
+      }
+      
+      setError(errorMessage);
     }
     setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
+    if (!authAvailable) {
+      setError('Authentication service is currently unavailable. Please try again later.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
@@ -38,7 +79,20 @@ export default function LoginPage() {
       await loginWithGoogle();
       router.push('/');
     } catch (error: any) {
-      setError('Failed to sign in with Google.');
+      console.error('Google login error details:', error);
+      let errorMessage = 'Failed to sign in with Google. ';
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'Sign-in popup was closed. Please try again.';
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        errorMessage = 'Sign-in was cancelled. Please try again.';
+      } else if (error.message && error.message.includes('configuration')) {
+        errorMessage = 'Google authentication is currently unavailable. Please try email/password instead.';
+      } else {
+        errorMessage = `Google sign-in failed: ${error.message || 'Unknown error'}`;
+      }
+      
+      setError(errorMessage);
     }
     setLoading(false);
   };
@@ -102,7 +156,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !authAvailable}
               className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-colors"
             >
               {loading ? <Loader className="animate-spin" size={20} /> : <LogIn size={20} />}
@@ -118,7 +172,7 @@ export default function LoginPage() {
 
           <button
             onClick={handleGoogleLogin}
-            disabled={loading}
+            disabled={loading || !authAvailable}
             className="w-full bg-white/5 hover:bg-white/10 border border-white/20 hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 py-3 rounded-lg font-medium transition-colors"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5">
@@ -138,6 +192,8 @@ export default function LoginPage() {
           </div>
         </div>
       </motion.div>
+      <AuthDebugInfo />
+      <TestAuthButton />
     </div>
   );
 }
