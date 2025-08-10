@@ -17,7 +17,7 @@ import {
   arrayRemove,
   increment
 } from 'firebase/firestore';
-import { getFirebaseDB } from '@/lib/firebase';
+import { getFirebaseDBSafe } from '@/lib/firebase';
 
 interface Comment {
   id: string;
@@ -42,21 +42,33 @@ export default function CommentsSection() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const db = getFirebaseDB();
-    const q = query(collection(db, 'comments'), orderBy('timestamp', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const commentsData: Comment[] = [];
-      querySnapshot.forEach((doc) => {
-        commentsData.push({
-          id: doc.id,
-          ...doc.data()
-        } as Comment);
-      });
-      setComments(commentsData);
-    });
+    try {
+      const db = getFirebaseDBSafe();
+      
+      if (!db) {
+        console.error('Firebase Firestore not available - comments disabled');
+        return;
+      }
 
-    return () => unsubscribe();
+      const q = query(collection(db, 'comments'), orderBy('timestamp', 'desc'));
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const commentsData: Comment[] = [];
+        querySnapshot.forEach((doc) => {
+          commentsData.push({
+            id: doc.id,
+            ...doc.data()
+          } as Comment);
+        });
+        setComments(commentsData);
+      }, (error) => {
+        console.error('Error fetching comments:', error);
+      });
+
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Error setting up comments listener:', error);
+    }
   }, []);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -65,7 +77,11 @@ export default function CommentsSection() {
 
     setLoading(true);
     try {
-      const db = getFirebaseDB();
+      const db = getFirebaseDBSafe();
+      if (!db) {
+        throw new Error('Comments are not available - database not initialized');
+      }
+      
       await addDoc(collection(db, 'comments'), {
         userId: currentUser.uid,
         userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
@@ -78,6 +94,7 @@ export default function CommentsSection() {
       setNewComment('');
     } catch (error) {
       console.error('Error adding comment:', error);
+      // You could show a user-friendly error message here
     }
     setLoading(false);
   };
@@ -85,11 +102,16 @@ export default function CommentsSection() {
   const handleLike = async (commentId: string, currentLikes: string[]) => {
     if (!currentUser) return;
 
-    const db = getFirebaseDB();
-    const commentRef = doc(db, 'comments', commentId);
-    const hasLiked = currentLikes.includes(currentUser.uid);
-
     try {
+      const db = getFirebaseDBSafe();
+      if (!db) {
+        console.error('Likes are not available - database not initialized');
+        return;
+      }
+
+      const commentRef = doc(db, 'comments', commentId);
+      const hasLiked = currentLikes.includes(currentUser.uid);
+
       if (hasLiked) {
         await updateDoc(commentRef, {
           likes: arrayRemove(currentUser.uid),
