@@ -50,8 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
-  function login(email: string, password: string) {
-    return signInWithEmailAndPassword(auth, email, password);
+  async function login(email: string, password: string) {
+    await signInWithEmailAndPassword(auth, email, password);
   }
 
   async function loginWithGoogle() {
