@@ -12,7 +12,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseAuth, getFirebaseDB } from '@/lib/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -34,6 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function signup(email: string, password: string, displayName: string) {
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDB();
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
     
     // Update the user's display name
@@ -51,10 +53,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function login(email: string, password: string) {
+    const auth = getFirebaseAuth();
     await signInWithEmailAndPassword(auth, email, password);
   }
 
   async function loginWithGoogle() {
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDB();
     const provider = new GoogleAuthProvider();
     const { user } = await signInWithPopup(auth, provider);
     
@@ -78,10 +83,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   function logout() {
+    const auth = getFirebaseAuth();
     return signOut(auth);
   }
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDB();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       

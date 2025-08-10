@@ -17,7 +17,7 @@ import {
   arrayRemove,
   increment
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getFirebaseDB } from '@/lib/firebase';
 
 interface Comment {
   id: string;
@@ -42,6 +42,7 @@ export default function CommentsSection() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const db = getFirebaseDB();
     const q = query(collection(db, 'comments'), orderBy('timestamp', 'desc'));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -64,6 +65,7 @@ export default function CommentsSection() {
 
     setLoading(true);
     try {
+      const db = getFirebaseDB();
       await addDoc(collection(db, 'comments'), {
         userId: currentUser.uid,
         userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
@@ -83,6 +85,7 @@ export default function CommentsSection() {
   const handleLike = async (commentId: string, currentLikes: string[]) => {
     if (!currentUser) return;
 
+    const db = getFirebaseDB();
     const commentRef = doc(db, 'comments', commentId);
     const hasLiked = currentLikes.includes(currentUser.uid);
 
